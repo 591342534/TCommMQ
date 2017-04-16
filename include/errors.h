@@ -20,7 +20,7 @@ enum RETCODE
     SYS_ERR               //system-call error
 };
 
-const char* errmsgs[] = 
+static const char* errmsgs[] = 
 {
     "success",
     "no enough space for mq",
