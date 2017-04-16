@@ -10,7 +10,7 @@
 #include <fstream>
 #include "tcomm_mq.h"
 
-#define DATASCALE 10000//00
+#define DATASCALE 10000000
 
 static std::string charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 
@@ -80,10 +80,13 @@ void* thd_do(void* args)
     event.data.fd = tcommu.notifier();
     epoll_ctl(efd, EPOLL_CTL_ADD, tcommu.notifier(), &event);
 
-    std::list<dataform> datapool;
+    std::list<std::pair<std::string, unsigned long> > datapool;
     #define BUFFSIZE 3072
     char readbuffer[BUFFSIZE];
     unsigned data_len;
+    unsigned long first_recv_time;
+
+    unsigned recv_cnt = 0;
 
     struct epoll_event revent;
     while (true)
@@ -92,11 +95,13 @@ void* thd_do(void* args)
         {
             while (tcommu.consume(readbuffer, BUFFSIZE, data_len) == QUEUE_SUCC)
             {
-                dataform data;
-                data.decode(readbuffer, data_len);
-                data.recvtime = getCurrentTimeInMillis();
-                datapool.push_back(data);
-//                std::cout << datapool.size() << " current size\n";
+                if (datapool.size() == 0)
+                    first_recv_time = getCurrentTimeInMillis();
+
+                std::string recvdata(readbuffer, readbuffer + data_len);
+                std::pair<std::string, unsigned long> mypair(recvdata, getCurrentTimeInMillis());
+                datapool.push_back(mypair);
+                ++recv_cnt;
                 if (DATASCALE == datapool.size())
                     break;
             }
@@ -105,16 +110,14 @@ void* thd_do(void* args)
         }
     }
     //persist data to test data content correctness
-    unsigned long total_time = 0;
+    unsigned long last_recv_time = getCurrentTimeInMillis();
     std::ofstream outfile;
     outfile.open("rect.txt", std::ofstream::out);
-    for (std::list<dataform>::iterator it = datapool.begin();
+    for (std::list<std::pair<std::string, unsigned long> >::iterator it = datapool.begin();
         it != datapool.end(); ++it)
-    {
-        total_time += it->recvtime - it->sendtime;
-        outfile << it->context << "\n";
-    }
-    std::cout << "each data delay " << total_time / DATASCALE << "ms\n";
+        outfile << it->first << "+" << it->second << "\n";
+
+    std::cout << "recv in " << recv_cnt << " data in " << last_recv_time - first_recv_time <<" ms\n";
     outfile.close();
     return NULL;
 }
@@ -122,40 +125,36 @@ void* thd_do(void* args)
 int main()
 {
     ::srand(::time(NULL));
-    std::list<dataform> datapool;
+    std::list<std::pair<std::string, unsigned long> > datapool;
     pthread_t tid;
     pthread_create(&tid, NULL, thd_do, NULL);
     pthread_detach(tid);
 
     for (int i = 0;i < DATASCALE; ++i)
     {
-        dataform data;
-        datapool.push_back(data);
+        std::pair<std::string, unsigned long> mypair("leechanx hello !", 0);
+        datapool.push_back(mypair);
     }
 
     unsigned send_cnt = 0;
 
     unsigned long first_snd_time = getCurrentTimeInMillis();
 
-    for (std::list<dataform>::iterator it = datapool.begin();
+    for (std::list<std::pair<std::string, unsigned long> >::iterator it = datapool.begin();
         it != datapool.end(); ++it)
     {
-        it->sendtime = getCurrentTimeInMillis();
-        char sendbuffer[1024];
-        unsigned datalen;
-        if (it->encode(sendbuffer, 1024, datalen))
-            if (tcommu.produce(sendbuffer, datalen) == QUEUE_SUCC)
-                ++send_cnt;
+        it->second = getCurrentTimeInMillis();
+        if (tcommu.produce(it->first.c_str(), it->first.size()) == QUEUE_SUCC)
+            ++send_cnt;
     }
-
     unsigned long last_snd_time = getCurrentTimeInMillis();
 
     std::cout << "send out " << send_cnt << " data in " << last_snd_time - first_snd_time <<" ms\n";
     std::ofstream outfile;
     outfile.open("sendt.txt", std::ofstream::out);
-    for (std::list<dataform>::iterator it = datapool.begin();
+    for (std::list<std::pair<std::string, unsigned long> >::iterator it = datapool.begin();
         it != datapool.end(); ++it)
-        outfile << it->context << "\n";
+        outfile << it->first << "+" << it->second << "\n";
     outfile.close();
     sleep(10000);
 }
