@@ -25,6 +25,7 @@ int TCommMQ::produce(const void *data, unsigned data_len)
         unsigned long long number = 1;
         write(evfd, &number, sizeof(unsigned long long));
     }
+    return ret;
 }
 
 int TCommMQ::consume(void *buffer, unsigned buffer_size, unsigned &data_len)

@@ -4,7 +4,7 @@
 #include "errors.h"
 
 ArrayMQ::ArrayMQ(uint32_t mq_size): 
-    head_addr(0), tail_addr(0), block_size(mq_size)
+    block_size(mq_size), head_addr(0), tail_addr(0)
 {
     block_ptr = new char[mq_size];
     exit_if(block_ptr == NULL, "no enough space for mq");
@@ -35,7 +35,8 @@ int ArrayMQ::enqueue(const void *data, unsigned data_len)
         return QUEUE_ERR_FULL;
 
     char msg_head[MSG_HEAD_LEN] = {};
-    *((unsigned *)msg_head) = BEGIN_BOUND_VALUE;
+    unsigned* msg_head_ptr = (unsigned *)msg_head;
+    *msg_head_ptr = BEGIN_BOUND_VALUE;
     memcpy(msg_head + BOUND_VALUE_LEN, &total_len, sizeof(unsigned));
 
     if (tail_2_end_len >= total_len)
@@ -149,7 +150,8 @@ int ArrayMQ::dequeue(void *buffer, unsigned buffer_size, unsigned &data_len)
         head = second_msg_head_len;
     }
     //copy real data now
-    unsigned sentinel_head =  *(unsigned *)msg_head;
+    unsigned* msg_head_ptr = (unsigned *)msg_head;
+    unsigned sentinel_head =  *msg_head_ptr;
     unsigned total_len = *((unsigned *)(msg_head + BOUND_VALUE_LEN));
 
     if (sentinel_head != BEGIN_BOUND_VALUE)
