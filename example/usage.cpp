@@ -14,54 +14,6 @@
 
 static std::string charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 
-struct dataform
-{
-    std::string context;
-    unsigned sendtime;
-    unsigned recvtime;
-
-    dataform(bool create = true): sendtime(0), recvtime(0)
-    {
-        if (create)
-        {
-            int size = ::rand() % 50;
-            context.resize(size);
-            for (int i = 0;i < context.size(); ++i)
-                context[i] = charset[::rand() % charset.length()];
-        }
-    }
-
-    bool encode(char* buffer, unsigned buffer_size, unsigned& data_size)
-    {
-        //sendtime|recvtime|context_len|context
-        if (context.size() + sizeof(unsigned) * 3 > buffer_size)
-            return false;
-        data_size = context.size() + sizeof(unsigned) * 3;
-        *(unsigned *)buffer = sendtime;
-        *((unsigned *)buffer + 1) = recvtime;
-        *((unsigned *)buffer + 2) = context.size();
-        buffer += sizeof(unsigned) * 3;
-        memcpy(buffer, context.c_str(), context.size());
-        return true;
-    }
-
-    bool decode(char* buffer, unsigned data_size)
-    {
-        //sendtime|recvtime|context_len|context
-        if (data_size < sizeof(unsigned) * 3)
-            return false;
-        data_size = context.size() + sizeof(unsigned) * 3;
-        sendtime = *(unsigned *)buffer;
-        recvtime = *((unsigned *)buffer + 1);
-        unsigned str_size = *((unsigned *)buffer + 2);
-        buffer += sizeof(unsigned) * 3;
-        if (data_size != str_size + sizeof(unsigned) * 3)
-            return false;
-        context.assign(buffer, buffer + str_size);
-        return true;
-    }
-};
-
 long int getCurrentTimeInMillis()
 {
     struct timeval tp;
@@ -95,17 +47,17 @@ void* thd_do(void* args)
         {
             while (tcommu.consume(readbuffer, BUFFSIZE, data_len) == QUEUE_SUCC)
             {
-                if (datapool.size() == 0)
+                if (recv_cnt == 0)
                     first_recv_time = getCurrentTimeInMillis();
 
                 std::string recvdata(readbuffer, readbuffer + data_len);
                 std::pair<std::string, unsigned long> mypair(recvdata, getCurrentTimeInMillis());
                 datapool.push_back(mypair);
                 ++recv_cnt;
-                if (DATASCALE == datapool.size())
+                if (DATASCALE == recv_cnt)
                     break;
             }
-            if (DATASCALE == datapool.size())
+            if (DATASCALE == recv_cnt)
                 break; 
         }
     }
@@ -132,7 +84,12 @@ int main()
 
     for (int i = 0;i < DATASCALE; ++i)
     {
-        std::pair<std::string, unsigned long> mypair("leechanx hello !", 0);
+        std::string data;
+        int size = 100;
+        data.resize(size);
+        for (int i = 0;i < data.size(); ++i)
+            data[i] = charset[::rand() % charset.length()];
+        std::pair<std::string, unsigned long> mypair(data, 0);
         datapool.push_back(mypair);
     }
 
