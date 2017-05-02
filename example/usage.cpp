@@ -7,10 +7,11 @@
 #include <sys/time.h>
 #include <sys/epoll.h>
 #include <string>
+#include <vector>
 #include <fstream>
 #include "tcomm_mq.h"
 
-#define DATASCALE 10000000
+#define DATASCALE 5000000
 
 static std::string charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 
@@ -32,7 +33,7 @@ void* thd_do(void* args)
     event.data.fd = tcommu.notifier();
     epoll_ctl(efd, EPOLL_CTL_ADD, tcommu.notifier(), &event);
 
-    std::list<std::pair<std::string, unsigned long> > datapool;
+    std::vector<std::pair<std::string, unsigned long> > datapool(DATASCALE);
     #define BUFFSIZE 3072
     char readbuffer[BUFFSIZE];
     unsigned data_len;
@@ -50,9 +51,8 @@ void* thd_do(void* args)
                 if (recv_cnt == 0)
                     first_recv_time = getCurrentTimeInMillis();
 
-                std::string recvdata(readbuffer, readbuffer + data_len);
-                std::pair<std::string, unsigned long> mypair(recvdata, getCurrentTimeInMillis());
-                datapool.push_back(mypair);
+                //datapool[recv_cnt].first = readbuffer;
+		datapool[recv_cnt].second = getCurrentTimeInMillis();
                 ++recv_cnt;
                 if (DATASCALE == recv_cnt)
                     break;
@@ -65,9 +65,9 @@ void* thd_do(void* args)
     unsigned long last_recv_time = getCurrentTimeInMillis();
     std::ofstream outfile;
     outfile.open("rect.txt", std::ofstream::out);
-    for (std::list<std::pair<std::string, unsigned long> >::iterator it = datapool.begin();
+    for (std::vector<std::pair<std::string, unsigned long> >::iterator it = datapool.begin();
         it != datapool.end(); ++it)
-        outfile << it->first << "+" << it->second << "\n";
+        outfile << "x" << "+" << it->second << "\n";
 
     std::cout << "recv in " << recv_cnt << " data in " << last_recv_time - first_recv_time <<" ms\n";
     outfile.close();
@@ -95,6 +95,8 @@ int main()
 
     unsigned send_cnt = 0;
 
+    sleep(2);
+    std::cout << "now send\n";
     unsigned long first_snd_time = getCurrentTimeInMillis();
 
     for (std::list<std::pair<std::string, unsigned long> >::iterator it = datapool.begin();
@@ -111,7 +113,7 @@ int main()
     outfile.open("sendt.txt", std::ofstream::out);
     for (std::list<std::pair<std::string, unsigned long> >::iterator it = datapool.begin();
         it != datapool.end(); ++it)
-        outfile << it->first << "+" << it->second << "\n";
+        outfile << 'x' << "+" << it->second << "\n";
     outfile.close();
-    sleep(10000);
+    sleep(3);
 }
