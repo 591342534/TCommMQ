@@ -52,16 +52,13 @@ event.events = EPOLLIN;
 event.data.fd = tcommu.notifier();
 epoll_ctl(efd, EPOLL_CTL_ADD, tcommu.notifier(), &event);
 
-while (true)
-{
-	if (epoll_wait(efd, &revent, 1, 10) > 0)
-	{
-            //一直从MQ中拿数据
-	    while (tcommu.consume(readbuffer, BUFFSIZE, data_len) == QUEUE_SUCC)
-	    {
-              //业务处理数据
-	    }
+while (true) {
+    if (epoll_wait(efd, &revent, 1, 10) > 0) {
+        //一直从MQ中拿数据
+	while (tcommu.consume(readbuffer, BUFFSIZE, data_len) == QUEUE_SUCC) {
+          //业务处理数据
 	}
+    }
 }
 ```
 
