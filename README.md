@@ -19,7 +19,7 @@ TCommMQ tcommu(size = 838860800, timeout = -1);
 //size(Bit): MQ大小
 //timeout(ms): 丢弃那些在MQ里存在超过timeout(ms)的消息
 ```
-####2 produce message
+#### 2 produce message
 是非阻塞操作
 ```cpp
 int ret = tcommu.produce(string_data, data_size);
@@ -27,7 +27,7 @@ int ret = tcommu.produce(string_data, data_size);
 //QUEUE_SUCC：成功写入
 //QUEUE_ERR_FULL：MQ已满
 ```
-####3 consume message
+#### 3 consume message
 是非阻塞操作
 ```cpp
 char readbuffer[BUFFSIZE];
@@ -38,7 +38,7 @@ int ret = tcommu.consume(readbuffer, BUFFSIZE, data_len);
 //QUEUE_ERR_EMPTY：MQ为空
 //QUEUE_ERR_...:各种内部错误，因为内存乱序（因为是理论上几乎不可能出现的错误，尚未想好对应的处理办法）
 ```
-####4 consume with Multiplex IO
+#### 4 consume with Multiplex IO
 
 TComMQ对应的文件描述符fd =` tcommu.notifier()`，当数据到达MQ or MQ有数据可读，fd产生可读事件
 
