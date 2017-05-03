@@ -15,6 +15,7 @@
 #include "tcomm_mq.h"
 ```
 <hr>
+
 #### create TComMQ
 ```cpp
 TCommMQ tcommu(size = 838860800, timeout = -1);
@@ -22,6 +23,7 @@ TCommMQ tcommu(size = 838860800, timeout = -1);
 //timeout(ms): 丢弃那些在MQ里存在超过timeout(ms)的消息
 ```
 <hr>
+
 #### produce message
 是非阻塞操作
 ```cpp
@@ -31,6 +33,7 @@ int ret = tcommu.produce(string_data, data_size);
 //QUEUE_ERR_FULL：MQ已满
 ```
 <hr>
+
 #### consume message
 是非阻塞操作
 ```cpp
