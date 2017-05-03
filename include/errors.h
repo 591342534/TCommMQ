@@ -33,6 +33,11 @@ static const char* errmsgs[] =
     "system-call error"
 };
 
+inline const char* printerr(int retcode)
+{
+    return (retcode >= 0 && retcode < (int)(sizeof errmsgs / sizeof (char *)))? errmsgs[retcode]: "";
+}
+
 #define TELL_ERROR(format, ...) fprintf(stderr, "ERROR: %s\n", format, ## __VA_ARGS__)
 
 #define TELL_SYS_ERROR fprintf(stderr, "ERROR: %s\n", strerror(errno))

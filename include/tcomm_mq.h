@@ -7,7 +7,7 @@
 class TCommMQ
 {
 public:
-    TCommMQ(uint32_t mq_size = 838860800);//default size = 800MB
+    TCommMQ(uint32_t mq_size = 838860800, long timeout = -1);//default size = 800MB
     ~TCommMQ();
 
     int produce(const void *data, unsigned data_len);
@@ -17,6 +17,7 @@ public:
 private:
     int evfd;   //eventfd
     ArrayMQ *mq;//mq
+    long msg_to;//message timeout threshold (ms)
 };
 
 #endif

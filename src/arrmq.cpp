@@ -33,11 +33,13 @@ int ArrayMQ::enqueue(const void *data, unsigned data_len)
     //head = (tail + 1) % size: full
     if (total_len >= free_len)
         return QUEUE_ERR_FULL;
-
+    //create message head
     char msg_head[MSG_HEAD_LEN] = {};
     unsigned* msg_head_ptr = (unsigned *)msg_head;
     *msg_head_ptr = BEGIN_BOUND_VALUE;
-    memcpy(msg_head + BOUND_VALUE_LEN, &total_len, sizeof(unsigned));
+    uint64_t* send_ts_ptr = (uint64_t *)(msg_head + BOUND_VALUE_LEN);
+    *send_ts_ptr = getCurrentMillis();//set current ts
+    memcpy(msg_head + BOUND_VALUE_LEN + 8, &total_len, sizeof(unsigned));
 
     if (tail_2_end_len >= total_len)
     {
@@ -124,11 +126,14 @@ int ArrayMQ::enqueue(const void *data, unsigned data_len)
     return QUEUE_SUCC;
 }
 
-int ArrayMQ::dequeue(void *buffer, unsigned buffer_size, unsigned &data_len)
+int ArrayMQ::dequeue(void *buffer, unsigned buffer_size, unsigned &data_len, uint64_t &send_ts)
 {
     unsigned head = head_addr, tail = tail_addr;
     if (head == tail)
+    {
+        data_len = 0;
         return QUEUE_ERR_EMPTY;
+    }
 
     unsigned new_head_addr = 0;
     unsigned used_len = head < tail ? tail - head: block_size + tail - head;
@@ -149,11 +154,12 @@ int ArrayMQ::dequeue(void *buffer, unsigned buffer_size, unsigned &data_len)
         memcpy(msg_head + first_msg_head_len, block_ptr, second_msg_head_len);
         head = second_msg_head_len;
     }
-    //copy real data now
+    //read message head info
     unsigned* msg_head_ptr = (unsigned *)msg_head;
     unsigned sentinel_head =  *msg_head_ptr;
-    unsigned total_len = *((unsigned *)(msg_head + BOUND_VALUE_LEN));
-
+    send_ts = *((uint64_t *)(msg_head + BOUND_VALUE_LEN));
+    unsigned total_len = *((unsigned *)(msg_head + BOUND_VALUE_LEN + 8));
+    //copy real data now
     if (sentinel_head != BEGIN_BOUND_VALUE)
         return QUEUE_ERR_CHECKSEN;
 
