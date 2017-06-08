@@ -31,16 +31,17 @@ int TCommMQ::produce(const void *data, unsigned data_len)
 int TCommMQ::consume(void *buffer, unsigned buffer_size, unsigned &data_len)
 {
     uint64_t send_ts;
-    int ret = mq->dequeue(buffer, buffer_size, data_len, send_ts);
     unsigned long long number;
+    int ret = mq->dequeue(buffer, buffer_size, data_len, send_ts);
+    read(evfd, &number, sizeof(unsigned long long));
     while (ret != QUEUE_ERR_EMPTY)
     {
-        read(evfd, &number, sizeof(unsigned long long));
         //check if timeout
         if (ret == QUEUE_SUCC && msg_to > 0 && getCurrentMillis() - send_ts >= (uint64_t)msg_to)
         {
             //drop it, dequeue again
             ret = mq->dequeue(buffer, buffer_size, data_len, send_ts);
+            read(evfd, &number, sizeof(unsigned long long));
             continue;
         }
         break;
