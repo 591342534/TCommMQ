@@ -7,19 +7,25 @@
 - “有数据可消费”为一个IO可读事件，比较适合EPOLL服务器的线程间数据交互
 - 支持单消费者线程与单生产者线程
 - 原理上支持多生产者线程与多消费者线程，但是出于易用性的考虑，暂时TODO
+- 在队列中存放超过指定时间的消息被一律丢弃
 
 ### USAGE
+
 #### head file
 ```cpp
 #include "tcomm_mq.h"
 ```
-#### 1 create TComMQ
+<hr>
+
+#### create TComMQ
 ```cpp
 TCommMQ tcommu(size = 838860800, timeout = -1);
 //size(Bit): MQ大小
 //timeout(ms): 丢弃那些在MQ里存在超过timeout(ms)的消息
 ```
-#### 2 produce message
+<hr>
+
+#### produce message
 是非阻塞操作
 ```cpp
 int ret = tcommu.produce(string_data, data_size);
@@ -27,7 +33,9 @@ int ret = tcommu.produce(string_data, data_size);
 //QUEUE_SUCC：成功写入
 //QUEUE_ERR_FULL：MQ已满
 ```
-#### 3 consume message
+<hr>
+
+#### consume message
 是非阻塞操作
 ```cpp
 char readbuffer[BUFFSIZE];
@@ -38,8 +46,9 @@ int ret = tcommu.consume(readbuffer, BUFFSIZE, data_len);
 //QUEUE_ERR_EMPTY：MQ为空
 //QUEUE_ERR_...:各种内部错误，因为内存乱序（因为是理论上几乎不可能出现的错误，尚未想好对应的处理办法）
 ```
-#### 4 consume with Multiplex IO
+<hr>
 
+#### consume with Multiplex IO
 TComMQ对应的文件描述符fd =` tcommu.notifier()`，当数据到达MQ or MQ有数据可读，fd产生可读事件
 
 ```cpp
@@ -52,22 +61,19 @@ event.events = EPOLLIN;
 event.data.fd = tcommu.notifier();
 epoll_ctl(efd, EPOLL_CTL_ADD, tcommu.notifier(), &event);
 
-while (true)
-{
-	if (epoll_wait(efd, &revent, 1, 10) > 0)
-	{
+while (true) {
+    if (epoll_wait(efd, &revent, 1, 10) > 0) {
         //一直从MQ中拿数据
-	    while (tcommu.consume(readbuffer, BUFFSIZE, data_len) == QUEUE_SUCC)
-	    {
-            //业务处理数据
-	    }
+	while (tcommu.consume(readbuffer, BUFFSIZE, data_len) == QUEUE_SUCC) {
+          //业务处理数据
 	}
+    }
 }
 ```
 
-### 测试v1
+### 测试
 
-> **100W data，length 100B**
+> **100W个消息，每个消息长100B**
 
 | test id | push | pop | each delay |
 | :-----: |:-----:|:-----:|:-----:|
@@ -82,7 +88,7 @@ while (true)
 |9|1496ms|1496ms|0.006ms|
 |10|1429ms|1429ms|0.013ms|
 
-> **1000W data，length 100B**
+> **1000W个消息，每个消息长100B**
 
 | test id | push | pop | each delay |
 | :-----: |:-----:|:-----:|:-----:|
